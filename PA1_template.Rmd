@@ -73,6 +73,12 @@ Let's add a new factor variable which identifies whether the day is a weekday or
 df2$weekday <- factor(ifelse(weekdays(as.Date(df2$date)) %in% c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday"), "Weekday", "Weekend"))
 ```
 
+Here's a histogram of the total number of steps taken each day after the missing values are imputed. 
+```{r}
+df1 <- df2 %>% group_by(date) %>% summarize(total_steps = sum(steps, na.rm = TRUE))
+hist(df1[, 'total_steps'])
+```
+
 Here's a panel plot showing time series with the 5-minute intervals on the x-axis, and the average number of steps on the y-axis. 
 
 ```{r}
