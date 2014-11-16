@@ -8,18 +8,80 @@ output:
 
 ## Loading and preprocessing the data
 
+We will unzip the activity file, and load the resulting csv as a data frame. 
 
+```{r}
+unzip("activity.zip")
+df <- read.csv("activity.csv")
+```
 
 ## What is mean total number of steps taken per day?
 
+Here's a histogram of the total number of steps taken each day. 
+```{r}
+library(dplyr, warn.conflicts = FALSE)
+df1 <- df %>% group_by(date) %>% summarize(total_steps = sum(steps, na.rm = TRUE))
+hist(df1[, 'total_steps'])
+```
+
+The table below shows the mean/median total number of steps taken per day. On days `where no measurements were available, you will see the mean/median as NaN/NA. 
+
+```{r}
+df %>% group_by(date) %>% summarize(avg_steps = mean(steps, na.rm = TRUE), median_steps = median(steps, na.rm = TRUE))
+```
 
 
 ## What is the average daily activity pattern?
 
+The following shows a time-series plot, with each 5-minute interval on the x-axis, and the average number of steps in that interval across all days on the y-axis. 
 
+```{r}
+df1 <- df %>% group_by(interval) %>% summarize(avg_steps = mean(steps, na.rm = TRUE))
+plot(df1$interval, df1$avg_steps, type = 'l')
+interval <- df1[df1$avg_steps == max(df1$avg_steps), ]$interval
+```
+
+The 5-minute interval with the highest average is `r interval`. 
 
 ## Imputing missing values
 
+The number of missing values for the steps parameter is `r sum(is.na(df$steps))`. 
+```{r}
+sum(is.na(df$steps))
+```
 
+We will fill in each missing value with the corresponding mean for the 5-minute interval. With this strategy, here's the new data set. 
+```{r}
+df2 <- df
+df1 <- df %>% group_by(interval) %>% summarize(avg_steps = mean(steps, na.rm = TRUE))
+indices <- which(is.na(df2$steps))
+for(i in indices) {
+  df2[i, 'steps'] <- df1[df1$interval == df2[i, 'interval'], 'avg_steps']
+}
+```
+
+Here's the mean and median with the new imputed missing values. Only the days with missing values are now impacted; all the NaNs and NAs are eliminated. 
+
+```{r}
+df2 %>% group_by(date) %>% summarize(avg_steps = mean(steps, na.rm = TRUE), median_steps = median(steps, na.rm = TRUE))
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+Let's add a new factor variable which identifies whether the day is a weekday or a weekend. 
+```{r}
+df2$weekday <- factor(ifelse(weekdays(as.Date(df2$date)) %in% c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday"), "Weekday", "Weekend"))
+```
+
+Here's a panel plot showing time series with the 5-minute intervals on the x-axis, and the average number of steps on the y-axis. 
+
+```{r}
+df3 <- df2 %>% group_by(interval, weekday) %>% summarize(avg_steps = mean(steps, na.rm = TRUE))
+df4 <- df3[df3$weekday == "Weekday", ]
+df5 <- df3[df3$weekday == "Weekend", ]
+
+library(lattice)
+layout(c(1, 2), 2, 1)
+plot(df4$interval, df4$avg_steps, type = "l", main = "Weekday")
+plot(df5$interval, df5$avg_steps, type = "l", main = "Weekend")
+```
